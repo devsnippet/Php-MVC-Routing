@@ -30,9 +30,9 @@ class RoutingMatcherCore {
      */
     const ActionSuffix = 'Action';
     /**
-     * PhpDoc route definition key which is over action method
+     * PhpDoc url pattern definition key which is over action method
      */
-    const MetaPhpDocRoute = '@Route';
+    const MetaPhpDocRoute = '@UrlPattern';
     /**
      * PhpDoc url prefix definition key which is over controller class
      */
