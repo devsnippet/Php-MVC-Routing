@@ -7,7 +7,7 @@
 
 namespace System\Engine\Routing;
 
-class RoutingMatcherMatcher extends RoutingMatcherCore {
+class RoutingMatcher extends RoutingMatcherCore {
     /**
      * Matches url and return target
      * @param $requestUrl

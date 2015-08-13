@@ -23,7 +23,7 @@ class Route {
      * @return array|bool
      */
     public static function match($requestUrl) {
-        $routingMatcher = new RoutingMatcherMatcher();
+        $routingMatcher = new RoutingMatcher();
         return $routingMatcher->matchUrl($requestUrl);
     }
 
