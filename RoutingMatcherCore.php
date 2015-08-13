@@ -131,8 +131,8 @@ class RoutingMatcherCore {
     }
 
     /**
-     * Merge and return controller, action and parameters
-     * @return string
+     * Returns controller, action and arguments array
+     * @return array
      */
     protected function getTarget() {
         return [

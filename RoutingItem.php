@@ -82,7 +82,7 @@ class RoutingItem {
      * Returns defined url pattern
      * @return null|UrlPattern
      */
-    public function getUrlPattern() {
+    public function urlPattern() {
         if (isset($this->urlPattern))
             return new UrlPattern(trim($this->urlPattern, '/'));
         else

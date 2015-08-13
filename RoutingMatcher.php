@@ -11,13 +11,12 @@ class RoutingMatcherMatcher extends RoutingMatcherCore {
     /**
      * Matches url and return target
      * @param $requestUrl
-     * @throws \Exception
-     * @return bool|string
+     * @return array|bool
      */
     public function matchUrl($requestUrl) {
         $requestUrl = trim($requestUrl, '/');
         /*
-         * Matches directly controller accorting to request url
+         * Matches directly controller and action accorting to request url
          * Only Parent Routing Definitons are used here from routings
          */
         if ($theRestOfRequestUrl = $this->matchControllerDirect($requestUrl)) {
@@ -27,16 +26,16 @@ class RoutingMatcherMatcher extends RoutingMatcherCore {
             }
         }
         /*
-         * Matches controller accorting to routing definition
+         * Matches controller accorting to routing definition which has no parent
          */
         $maxMatchScore = -1;
         foreach ($this->routingCollection->getRoutingItems() as $routingItem) {
-            if (!$routingItem->hasParent() && !$routingItem->isParent() && $routingItem->getUrlPattern()) {
-                if ($maxMatchScore < $score = $routingItem->getUrlPattern()->getMatchScoreUrl($requestUrl)) {
+            if (!$routingItem->hasParent() && !$routingItem->isParent() && $routingItem->urlPattern()) {
+                if ($maxMatchScore < $score = $routingItem->urlPattern()->getMatchScoreUrl($requestUrl)) {
                     $maxMatchScore = $score;
                     $this->controller = $routingItem->getController();
                     $this->action = $routingItem->getAction();
-                    $this->urlPattern = $routingItem->getUrlPattern();
+                    $this->urlPattern = $routingItem->urlPattern();
                 }
             }
         }
@@ -81,17 +80,22 @@ class RoutingMatcherMatcher extends RoutingMatcherCore {
         if (isset($this->action))
             return true;
         /*
-         * Seeking in routings
+         * Seeking in routings by routing url pattern
          */
         foreach ($this->routingCollection->getRoutingItems() as $routingItem) {
             if ($routingItem->getController() == $this->controller && $routingItem->hasParent()) {
-                if (preg_match('@^' . $routingItem->getAction() . '(?!\w+)@', $theRestOfRequestUrl)) {
+                if ($maxMatchScore < $score = $routingItem->urlPattern()->getMatchScoreUrl($theRestOfRequestUrl)) {
+                    $maxMatchScore = $score;
                     $this->action = $routingItem->getAction();
-                    $this->urlPattern = $routingItem->getUrlPattern();
-                    return true;
+                    $this->urlPattern = $routingItem->urlPattern();
                 }
             }
         }
+        if (isset($this->action))
+            return true;
+        /*
+         * No matches
+         */
         return false;
     }
 
