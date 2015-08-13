@@ -12,7 +12,7 @@
  */
 class SampleController extends Controller {
     /**
-     * @UrlPattern /sayHelloTo-{username}
+     * @UrlPattern /sayHelloTo/{username}
      */
     public function helloAction($username) {
         echo "Hello $username!";
@@ -21,7 +21,7 @@ class SampleController extends Controller {
 
 include_once('loader.php');
 $route = new Route();
-var_dump($route->match('/samplePage/sayHelloTo-keislamoglu'));
+var_dump($route->match('/samplePage/sayHelloTo/keislamoglu'));
 ```
 The output:
 <pre class='xdebug-var-dump' dir='ltr'>
