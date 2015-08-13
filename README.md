@@ -1,4 +1,6 @@
 # Php MVC Routing Class
+Routing class for Php MVC projects.
+
 **not stable and not finished yet*
 
 **This class will provide you to:**
