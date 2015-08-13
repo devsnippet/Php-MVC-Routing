@@ -1,7 +1,5 @@
 # Php MVC Routing Class
-Routing class for Php MVC projects.
-
-**not stable and not finished yet*
+Routing class for Php MVC projects. *(Not stable and not finished yet)*
 
 **This class will provide you to:**
 - define url pattern just over action methods with phpDoc
