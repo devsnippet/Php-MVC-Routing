@@ -5,20 +5,33 @@
  * @url <https://github.com/keislamoglu>
  */
 
-namespace System\Engine\Routing;
+namespace Routing;
 
-class RoutingMatcher extends RoutingMatcherCore {
+class RoutingMatcher extends RoutingHelper {
+    /**
+     * Routing collection
+     * @var RoutingCollection
+     */
+    private $routingCollection;
+
+    /**
+     * Construction
+     */
+    function __construct() {
+        $this->routingCollection = new RoutingCollection();
+    }
+
     /**
      * Matches url and return target
      * @param $requestUrl
      * @return array|bool
      */
     public function matchUrl($requestUrl) {
-        $requestUrl = trim($requestUrl, '/');
         /*
          * Matches directly controller and action accorting to request url
          * Only Parent Routing Definitons are used here from routings
          */
+        $requestUrl = '/' . trim($requestUrl, '/');
         if ($theRestOfRequestUrl = $this->matchControllerDirect($requestUrl)) {
             if ($this->matchAction($theRestOfRequestUrl) !== false) {
                 $this->getArgsAccortingToUrlPattern($theRestOfRequestUrl);
@@ -72,7 +85,7 @@ class RoutingMatcher extends RoutingMatcherCore {
                 $this->urlPattern = $urlPatternOverActionMethod;
             } // by action name
             else
-                if ($urlPatternCreatedByActionName->getMatchScoreUrl($theRestOfRequestUrl) !== false) {
+                if ($urlPatternCreatedByActionName->getMatchScoreUrl(trim($theRestOfRequestUrl, '/')) !== false) {
                     $this->action = $action;
                     $this->urlPattern = new UrlPattern($this->generateUrlPatternFromActionArgs($this->controller, $this->action));
                 }
@@ -109,13 +122,16 @@ class RoutingMatcher extends RoutingMatcherCore {
          * Seeking in classnames
          */
         foreach ($this->getControllerPathNamesFromClassFiles() as $controllerName) {
+            if ($controllerName == 'Mesaj') {
+                $test = 2;
+            }
             $pureControllerName = str_replace(DIRECTORY_SEPARATOR, '', $controllerName);
-            $phpDocUrlPrefix = ltrim($this->getPhpDocDefUrlPrefix($pureControllerName), '/');
+            $phpDocUrlPrefix = $this->getPhpDocDefUrlPrefix($pureControllerName);
             if ($phpDocUrlPrefix !== null && preg_match($pattern = '@^' . $phpDocUrlPrefix . '(?!\w+)@', $requestUrl)) {
                 $this->controller = $pureControllerName;
                 return preg_replace($pattern, '', $requestUrl, 1); // return the rest of request url
             } else
-                if (preg_match($pattern = '@^' . $controllerName . '(?!\w+)@', $requestUrl)) {
+                if (preg_match($pattern = '@^/' . $controllerName . '(?!\w+)@', $requestUrl)) {
                     $this->controller = $pureControllerName;
                     return preg_replace($pattern, '', $requestUrl, 1); // returns the rest of request url
                 }
@@ -126,7 +142,7 @@ class RoutingMatcher extends RoutingMatcherCore {
         foreach ($this->routingCollection->getRoutingItems() as $routingItem) {
             if ($routingItem->isParent() && preg_match($pattern = '@^' . $routingItem->getUrlPrefix() . '(?!\w+)@', $requestUrl)) {
                 $this->controller = $routingItem->getController();
-                return preg_replace($pattern, '', $requestUrl, 1);
+                return preg_replace('@^' . $routingItem->getUrlPrefix() . '@', '', $requestUrl, 1);
             }
         }
         return false;

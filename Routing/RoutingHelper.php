@@ -5,22 +5,18 @@
  * @url <https://github.com/keislamoglu>
  */
 
-namespace System\Engine\Routing;
+namespace Routing;
 
 
 use System\Helper\ClassHelper;
 use System\Helper\FileHelper;
 use System\Helper\PhpDocParser;
 
-class RoutingMatcherCore {
+class RoutingHelper {
     /**
      * Controller class files directory
      */
-    const CONTROLLER_CLASS_FILES_DIRECTORY = DIR_CONTROLLER; // controller class files directory
-    /**
-     * Host url
-     */
-    const HOST = SITE_URL;
+    const CONTROLLER_FILES_DIRECTORY = DIR_CONTROLLER; // controller class files directory
     /**
      * Contoller class name's suffix
      */
@@ -32,16 +28,15 @@ class RoutingMatcherCore {
     /**
      * PhpDoc url pattern definition key which is over action method
      */
-    const MetaPhpDocRoute = '@UrlPattern';
+    const MetaPhpUrlPattern = '@UrlPattern';
+    /**
+     * PhpDoc url pattern definition key which is over action method
+     */
+    const MetaPhpDocRoutingSlug = '@RoutingSlug';
     /**
      * PhpDoc url prefix definition key which is over controller class
      */
     const MetaPhpDocUrlPrefix = '@UrlPrefix';
-    /**
-     * Routing collection
-     * @var RoutingCollection
-     */
-    protected $routingCollection;
     /**
      * Controller name
      * @var string
@@ -64,19 +59,12 @@ class RoutingMatcherCore {
     protected $urlPattern;
 
     /**
-     * Construction
-     */
-    function __construct() {
-        $this->routingCollection = new RoutingCollection();
-    }
-
-    /**
      * Generate controller class ful name with namespace
      * @param $controller
      * @return string
      */
     protected function controllerClassFullName($controller) {
-        $controller = preg_replace('/(\w+)' . self::ControllerSuffix . '/', '$1', $controller);
+        $controller = preg_replace('@(\w+)' . self::ControllerSuffix . '@', '$1', str_replace('/', '', $controller));
         return 'Projects\\' . PROJECT_NAME . '\\App\\' . $controller . self::ControllerSuffix;
     }
 
@@ -86,7 +74,7 @@ class RoutingMatcherCore {
      * @return string
      */
     protected function actionMethodFullName($action) {
-        $action = preg_replace('/(\w+)' . self::ActionSuffix . '/', '$1', $action);
+        $action = preg_replace('@(\w+)' . self::ActionSuffix . '@', '$1', $action);
         return $action . self::ActionSuffix;
     }
 
@@ -100,21 +88,23 @@ class RoutingMatcherCore {
     }
 
     /**
-     * Load routing collection
-     */
-    protected function loadRoutingCollection() {
-        if (empty($this->routingCollection))
-            $this->routingCollection = new RoutingCollection();
-    }
-
-    /**
-     * Get phpDoc Route value which is over action method if exists, else returns null
+     * Get phpDoc UrlPattern value which is over action method if exists, else returns null
      * @param $controllerName
      * @param $actionName
      * @return null|string
      */
     protected function getUrlPatternOverActionMethod($controllerName, $actionName) {
-        return PhpDocParser::methodDoc($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName), self::MetaPhpDocRoute);
+        return PhpDocParser::methodDoc($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName), self::MetaPhpUrlPattern);
+    }
+
+    /**
+     * Get phpDoc RoutingSlug value which is over action method if exists, else returns null
+     * @param $controllerName
+     * @param $actionName
+     * @return null|string
+     */
+    protected function getRoutingSlugOverActionMethod($controllerName, $actionName) {
+        return PhpDocParser::methodDoc($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName), self::MetaPhpDocRoutingSlug);
     }
 
     /**
@@ -204,8 +194,8 @@ class RoutingMatcherCore {
      */
     protected function getControllerPathNamesFromClassFiles() {
         return array_map(function ($v) {
-            return preg_replace('@' . self::CONTROLLER_CLASS_FILES_DIRECTORY . DIRECTORY_SEPARATOR . '([\w+/]+)' . self::ControllerSuffix . '\.php@', '$1', $v);
-        }, FileHelper::directoryToArray(self::CONTROLLER_CLASS_FILES_DIRECTORY));
+            return preg_replace('@' . self::CONTROLLER_FILES_DIRECTORY . DIRECTORY_SEPARATOR . '([\w+/]+)' . self::ControllerSuffix . '\.php@', '$1', $v);
+        }, FileHelper::directoryToArray(self::CONTROLLER_FILES_DIRECTORY));
     }
 
     /**
@@ -225,19 +215,10 @@ class RoutingMatcherCore {
      * @return string
      */
     protected function generateUrlPatternFromActionArgs($controllerName, $actionName) {
-        return $a = $actionName . '/' . implode('/', array_map(function ($arg) {
-                $argPattern = '{' . $arg->getName();
-                $argPattern .= $arg->isOptional() ? '?}' : '}';
-                return $argPattern;
-            }, $this->getActionArgs($controllerName, $actionName)));
-    }
-
-    /**
-     * Purify the brackets #{username} => username
-     * @param $string
-     * @return mixed
-     */
-    protected function purifyTheBrackets($string) {
-        return trim(preg_replace('@{([^}]+)}@', '$1', $string), '?');
+        return '/' . $actionName . '/' . implode('/', array_map(function ($arg) {
+            $argPattern = '{' . $arg->getName();
+            $argPattern .= $arg->isOptional() ? '?}' : '}';
+            return $argPattern;
+        }, $this->getActionArgs($controllerName, $actionName)));
     }
 } 

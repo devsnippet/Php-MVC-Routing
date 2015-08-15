@@ -5,7 +5,7 @@
  * @url <https://github.com/keislamoglu>
  */
 
-namespace System\Engine\Routing;
+namespace Routing;
 
 
 class UrlPattern {
@@ -121,20 +121,24 @@ class UrlPattern {
     }
 
     /**
+     * Checks if it's matched with given url
+     * @param $requestUrl
+     * @return bool
+     */
+    public function isMatches($requestUrl) {
+        foreach ($this->getRegexPatternVariations() as $regexPattern) {
+            if (preg_match($regexPattern, $requestUrl))
+                return true;
+        }
+        return false;
+    }
+
+    /**
      * Checks if url pattern has arguments
      * @return bool
      */
     public function hasArgs() {
         return isset($this->args);
-    }
-
-    /**
-     * Slice url pattern by regex pattern
-     * @param $regexPattern
-     */
-    public function sliceByRegex($regexPattern) {
-        $regexPattern = '@(' . trim($regexPattern, '/@%~;') . ')@';
-        $this->urlPattern = preg_replace($regexPattern, '$1', $this->urlPattern, 1);
     }
 
     /**
@@ -153,14 +157,14 @@ class UrlPattern {
              */
             $exchangedString = preg_replace('@([^}]+){[^}]+\?}@', '$1[willNotRemove]', $this->urlPattern, $limit);
             /*
-             * Remove args has default value
+             * Remove args which might not set
              */
-            $exchangedString = preg_replace('@([^}]+){[^}]+\?}@', '', $exchangedString);
+            $exchangedString = $this->removeUrlArgsMightNotSet($exchangedString);
             /*
              * Exchange args with regex
              */
             $exchangedString = preg_replace('@\[willNotRemove\]@', '(.+)', $exchangedString);
-            $variations[] = '@' . preg_replace('@{[^}]+}@', '(.+)', $exchangedString) . '@';
+            $variations[] = '@^' . preg_replace('@{[^}]+}@', '(.+)', $exchangedString) . '@';
         }
         return $variations;
     }
@@ -169,7 +173,7 @@ class UrlPattern {
      * Returns url pattern string
      * @return mixed
      */
-    public function get() {
+    public function getString() {
         return $this->urlPattern;
     }
 
@@ -180,6 +184,24 @@ class UrlPattern {
     public function set($urlPattern) {
         $this->urlPattern = $urlPattern;
         $this->parse($urlPattern);
+    }
+
+    /**
+     * Returns url replaced arguments
+     * @param array $args
+     * @throws \Exception
+     * @return mixed
+     */
+    public function getReplacedStringWithArgs(array $args) {
+        $replaced = $this->urlPattern;
+        foreach ($args as $argKey => $argVal) {
+            if (in_array($argKey, $this->getArgs())) {
+                $replaced = preg_replace('@{' . $argKey . '\?*}@', $argVal, $replaced);
+            } else {
+                throw new \Exception('Argument key "' . $argKey . '" is not match with url pattern "' . $this->urlPattern . '"');
+            }
+        }
+        return $this->removeUrlArgs($this->removeUrlArgsMightNotSet($replaced));
     }
 
     /**
@@ -198,5 +220,31 @@ class UrlPattern {
         if (preg_match_all('@(?<!{)([\w-]+)(?!(?:\?|)})(?!\w+)@', $this->urlPattern, $matchesAbsolutes)) {
             $this->absolutes = next($matchesAbsolutes);
         }
+    }
+
+    /**
+     * Returns url pattern with removed url args which might not set
+     * @param $urlPattern
+     * @return mixed
+     */
+    private function removeUrlArgsMightNotSet($urlPattern) {
+        return preg_replace('@(?:[^}\w]*){[^}]+\?}@', '', $urlPattern);
+    }
+
+    /**
+     * Returns url pattern with removed url args
+     * @param $urlPattern
+     * @return mixed
+     */
+    private function removeUrlArgs($urlPattern) {
+        return preg_replace('@(?:[^}\w]*){[^}]+}@', '', $urlPattern);
+    }
+
+    /**
+     * __toString method
+     * @return string
+     */
+    function __toString() {
+        return $this->getString();
     }
 }

@@ -5,7 +5,7 @@
  * @url <https://github.com/keislamoglu>
  */
 
-namespace System\Engine\Routing;
+namespace Routing;
 
 
 class RoutingItem {
@@ -84,7 +84,7 @@ class RoutingItem {
      */
     public function urlPattern() {
         if (isset($this->urlPattern))
-            return new UrlPattern(trim($this->urlPattern, '/'));
+            return new UrlPattern(rtrim($this->urlPattern, '/'));
         else
             return null;
     }
@@ -93,11 +93,11 @@ class RoutingItem {
      * Returns defined url pattern, if it has parent, add parent prefix url
      * @return null|UrlPattern
      */
-    public function getFullUrlPattern() {
+    public function urlFullPattern() {
         if (isset($this->urlPattern)) {
             $urlPattern = $this->hasParent() ? $this->getParentItem()->getUrlPrefix() : '';
             $urlPattern .= $this->urlPattern;
-            return new UrlPattern(trim($urlPattern, '/'));
+            return new UrlPattern($urlPattern);
         } else {
             return null;
         }
@@ -131,7 +131,7 @@ class RoutingItem {
      */
     public function getUrlPrefix() {
         if (isset($this->urlPrefix))
-            return trim($this->urlPrefix, '/');
+            return $this->urlPrefix;
         else
             return null;
     }
