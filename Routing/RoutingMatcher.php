@@ -7,7 +7,8 @@
 
 namespace Routing;
 
-class RoutingMatcher extends RoutingHelper {
+class RoutingMatcher extends RoutingHelper
+{
     /**
      * Routing collection
      * @var RoutingCollection
@@ -17,7 +18,8 @@ class RoutingMatcher extends RoutingHelper {
     /**
      * Construction
      */
-    function __construct() {
+    function __construct()
+    {
         $this->routingCollection = new RoutingCollection();
     }
 
@@ -26,7 +28,8 @@ class RoutingMatcher extends RoutingHelper {
      * @param $requestUrl
      * @return array|bool
      */
-    public function matchUrl($requestUrl) {
+    public function matchUrl($requestUrl)
+    {
         /*
          * Matches directly controller and action accorting to request url
          * Only Parent Routing Definitons are used here from routings
@@ -35,6 +38,7 @@ class RoutingMatcher extends RoutingHelper {
         if ($theRestOfRequestUrl = $this->matchControllerDirect($requestUrl)) {
             if ($this->matchAction($theRestOfRequestUrl) !== false) {
                 $this->getArgsAccortingToUrlPattern($theRestOfRequestUrl);
+                $this->getRequestMethods();
                 return $this->getTarget();
             }
         }
@@ -54,6 +58,7 @@ class RoutingMatcher extends RoutingHelper {
         }
         if (isset($this->controller) && isset($this->action)) {
             $this->getArgsAccortingToUrlPattern($requestUrl);
+            $this->getRequestMethods();
             return $this->getTarget();
         }
         /*
@@ -67,15 +72,16 @@ class RoutingMatcher extends RoutingHelper {
      * @param $theRestOfRequestUrl
      * @return bool
      */
-    private function matchAction($theRestOfRequestUrl) {
+    private function matchAction($theRestOfRequestUrl)
+    {
         $maxMatchScore = -1;
         /*
          * Seeking in controller class
          */
         foreach ($this->controllerActionNames($this->controller) as $action) {
             // phpDoc Url Pattern
-            if ($this->getUrlPatternOverActionMethod($this->controller, $action))
-                $urlPatternOverActionMethod = new UrlPattern($this->getUrlPatternOverActionMethod($this->controller, $action));
+            if ($this->getUrlPatternDefinitionOverActionMethod($this->controller, $action))
+                $urlPatternOverActionMethod = new UrlPattern($this->getUrlPatternDefinitionOverActionMethod($this->controller, $action));
             // url pattern created by action name
             $urlPatternCreatedByActionName = new UrlPattern($action);
             // by phpDoc definition over action, if exists
@@ -117,7 +123,8 @@ class RoutingMatcher extends RoutingHelper {
      * @param $requestUrl
      * @return bool|mixed
      */
-    private function matchControllerDirect($requestUrl) {
+    private function matchControllerDirect2($requestUrl)
+    {
         /*
          * Seeking in classnames
          */
@@ -126,7 +133,7 @@ class RoutingMatcher extends RoutingHelper {
                 $test = 2;
             }
             $pureControllerName = str_replace(DIRECTORY_SEPARATOR, '', $controllerName);
-            $phpDocUrlPrefix = $this->getPhpDocDefUrlPrefix($pureControllerName);
+            $phpDocUrlPrefix = $this->getUrlPrefixDefinitionOverController($pureControllerName);
             if ($phpDocUrlPrefix !== null && preg_match($pattern = '@^' . $phpDocUrlPrefix . '(?!\w+)@', $requestUrl)) {
                 $this->controller = $pureControllerName;
                 return preg_replace($pattern, '', $requestUrl, 1); // return the rest of request url
@@ -145,6 +152,46 @@ class RoutingMatcher extends RoutingHelper {
                 return preg_replace('@^' . $routingItem->getUrlPrefix() . '@', '', $requestUrl, 1);
             }
         }
+        return false;
+    }
+
+    private function matchControllerDirect($requestUrl)
+    {
+        /*
+         * Seeking in classnames
+         */
+        $maxMatchScore = -1;
+        foreach ($this->getControllerPathNamesFromClassFiles() as $controllerName) {
+            $pureControllerName = str_replace(DIRECTORY_SEPARATOR, '', $controllerName);
+            $phpDocUrlPrefix = $this->getUrlPrefixDefinitionOverController($pureControllerName);
+            if ($phpDocUrlPrefix !== null && $maxMatchScore < $score = (new UrlPattern($phpDocUrlPrefix))->getMatchScoreUrl($requestUrl)) {
+                $maxMatchScore = $score;
+                $pattern = '@^' . $phpDocUrlPrefix . '(?!\w+)@';
+                $this->controller = $pureControllerName;
+                $theRestOfRequestUrl = preg_replace($pattern, '', $requestUrl, 1); // return the rest of request url
+            } else
+                if ($maxMatchScore < $score = (new UrlPattern('/' . $controllerName))->getMatchScoreUrl($requestUrl)) {
+                    $maxMatchScore = $score;
+                    $pattern = '@^/' . $controllerName . '(?!\w+)@';
+                    $this->controller = $pureControllerName;
+                    $theRestOfRequestUrl = preg_replace($pattern, '', $requestUrl, 1); // returns the rest of request url
+                }
+        }
+        /*
+         * Seeking in parent routing items
+         */
+
+        foreach ($this->routingCollection->getRoutingItems() as $routingItem) {
+            if ($routingItem->isParent() && $maxMatchScore < $score = (new UrlPattern($routingItem->getUrlPrefix()))->getMatchScoreUrl($requestUrl)) {
+                $maxMatchScore = $score;
+                $pattern = '@^' . $routingItem->getUrlPrefix() . '(?!\w+)@';
+                $this->controller = $routingItem->getController();
+                $theRestOfRequestUrl = preg_replace($pattern, '', $requestUrl, 1);
+            }
+        }
+
+        if (isset($this->controller))
+            return $theRestOfRequestUrl;
         return false;
     }
 }

@@ -8,13 +8,15 @@
 namespace Routing;
 
 
-class RoutingItem {
+class RoutingItem
+{
     const MetaRoutingController = 'controller';
     const MetaRoutingAction = 'action';
     const MetaRoutingParameters = 'params';
     const MetaRoutingUrlPattern = 'url_pattern';
     const MetaRoutingUrlPrefix = 'url_prefix';
     const MetaRoutingParentSlug = 'parent_slug';
+    const MetaRoutingRequestMethods = 'request_methods';
     /**
      * @var string
      */
@@ -43,8 +45,13 @@ class RoutingItem {
      * @var RoutingItem
      */
     private $parentItem;
+    /**
+     * @var array
+     */
+    private $requestMethods = array();
 
-    public function __construct($slug, array $properties) {
+    public function __construct($slug, array $properties)
+    {
         $this->createInstance($slug, $properties);
     }
 
@@ -53,7 +60,8 @@ class RoutingItem {
      * @param $slug
      * @param array $properties
      */
-    public function createInstance($slug, array $properties) {
+    public function createInstance($slug, array $properties)
+    {
         $this->slug = $slug;
         $this->setProperties($properties);
     }
@@ -62,7 +70,8 @@ class RoutingItem {
      * Returns defined action
      * @return string|null
      */
-    public function getAction() {
+    public function getAction()
+    {
         return $this->action;
     }
 
@@ -70,7 +79,8 @@ class RoutingItem {
      * Returns defined controller
      * @return string|null
      */
-    public function getController() {
+    public function getController()
+    {
         if (isset($this->controller))
             return $this->controller;
         else {
@@ -82,7 +92,8 @@ class RoutingItem {
      * Returns defined url pattern
      * @return null|UrlPattern
      */
-    public function urlPattern() {
+    public function urlPattern()
+    {
         if (isset($this->urlPattern))
             return new UrlPattern(rtrim($this->urlPattern, '/'));
         else
@@ -93,11 +104,12 @@ class RoutingItem {
      * Returns defined url pattern, if it has parent, add parent prefix url
      * @return null|UrlPattern
      */
-    public function urlFullPattern() {
+    public function urlFullPattern()
+    {
         if (isset($this->urlPattern)) {
             $urlPattern = $this->hasParent() ? $this->getParentItem()->getUrlPrefix() : '';
             $urlPattern .= $this->urlPattern;
-            return new UrlPattern($urlPattern);
+            return new UrlPattern('/' . ltrim($urlPattern, '/'));
         } else {
             return null;
         }
@@ -107,7 +119,8 @@ class RoutingItem {
      * Checks if this is a parent
      * @return bool
      */
-    public function isParent() {
+    public function isParent()
+    {
         if (isset($this->urlPrefix))
             return true;
         else
@@ -118,7 +131,8 @@ class RoutingItem {
      * Checks if this has a parent slug
      * @return bool
      */
-    public function hasParent() {
+    public function hasParent()
+    {
         if (isset($this->parentSlug))
             return true;
         else
@@ -129,7 +143,8 @@ class RoutingItem {
      * Returns url prefix if this is a parent; else null
      * @return string|null
      */
-    public function getUrlPrefix() {
+    public function getUrlPrefix()
+    {
         if (isset($this->urlPrefix))
             return $this->urlPrefix;
         else
@@ -137,10 +152,20 @@ class RoutingItem {
     }
 
     /**
+     * Returns defined request methods
+     * @return array
+     */
+    public function getRequestMethods()
+    {
+        return $this->requestMethods;
+    }
+
+    /**
      * Returns slug
      * @return string
      */
-    public function getSlug() {
+    public function getSlug()
+    {
         return $this->slug;
     }
 
@@ -148,7 +173,8 @@ class RoutingItem {
      * Returns parent slug if this has a parent; else null
      * @return string|null
      */
-    public function getParentSlug() {
+    public function getParentSlug()
+    {
         return $this->parentSlug;
     }
 
@@ -157,7 +183,8 @@ class RoutingItem {
      * @param RoutingItem $routingItem
      * @throws \Exception
      */
-    public function setParentItem(RoutingItem $routingItem) {
+    public function setParentItem(RoutingItem $routingItem)
+    {
         if (!$this->isParent())
             $this->parentItem = $routingItem;
         else
@@ -168,7 +195,8 @@ class RoutingItem {
      * Return parent routing item if this has;else null
      * @return RoutingItem|null
      */
-    public function getParentItem() {
+    public function getParentItem()
+    {
         if ($this->hasParent()) {
             if (!$this->parentItem) {
                 $routingCollection = new RoutingCollection();
@@ -185,7 +213,8 @@ class RoutingItem {
      * @param $requestUrl
      * @return mixed
      */
-    public function exchangeUrlPrefixWithController($requestUrl) {
+    public function exchangeUrlPrefixWithController($requestUrl)
+    {
         return preg_replace('@' . $this->getUrlPrefix() . '@', $this->getController(), $requestUrl, 1);
     }
 
@@ -194,34 +223,61 @@ class RoutingItem {
      * @param array $properties
      * @throws \Exception
      */
-    public function setProperties(array $properties) {
+    public function setProperties(array $properties)
+    {
         $this->controller = isset($properties[self::MetaRoutingController]) ? $properties[self::MetaRoutingController] : null;
         $this->action = isset($properties[self::MetaRoutingAction]) ? $properties[self::MetaRoutingAction] : null;
         $this->urlPrefix = isset($properties[self::MetaRoutingUrlPrefix]) ? $properties[self::MetaRoutingUrlPrefix] : null;
         $this->parentSlug = isset($properties[self::MetaRoutingParentSlug]) ? $properties[self::MetaRoutingParentSlug] : null;
         $this->urlPattern = isset($properties[self::MetaRoutingUrlPattern]) ? $properties[self::MetaRoutingUrlPattern] : null;
+        $this->requestMethods = isset($properties[self::MetaRoutingRequestMethods]) ? $this->parseRequestMethods($properties[self::MetaRoutingRequestMethods]) : ['GET'];
         $this->validateRoutingDefition();
+    }
+
+    /**
+     * Parse raw $requestMethods, Returns as array
+     * @param $requestMethods
+     * @return array
+     */
+    private function parseRequestMethods($requestMethods)
+    {
+        return array_map(function ($v) {
+            return trim($v);
+        }, explode('|', trim($requestMethods, '|')));
     }
 
     /**
      * Validate if it's a valid definition
      * @throws \Exception
      */
-    private function validateRoutingDefition() {
+    private function validateRoutingDefition()
+    {
         $case_1 = !$this->hasParent() && !$this->getController(); // controller should be defined
         $case_2 = !$this->isParent() && !$this->getAction(); // action should be defined
         $case_3 = $this->isParent() && !$this->getController(); // controller should be defined
-//        $case_4 = !$this->getUrlPattern() && !$this->getUrlPrefix(); // url pattern should be defined
-        if ($case_1 || $case_2 || $case_3 /*|| $case_4*/) {
-            $message = 'Bad routing definition for slug "' . $this->slug . '".';
+        $case_4 = $this->getRequestMethods() && !$this->validateRequestMethods(); // bad defition for request methods
+        $message = '';
+        if ($case_1 || $case_2 || $case_3) {
+            $message = 'Bad routing definition for slug "' . $this->slug . '". ';
             if ($case_1 || $case_3)
-                $message .= ' Controller';
+                $message .= 'Controller ';
             if ($case_2)
-                $message .= ' Action';
-            /*  if ($case_4)
-                  $message .= ' Url Pattern';*/
-            $message .= ' should be defined.';
-            throw new \Exception($message);
+                $message .= 'Action ';
+            $message .= 'should be defined. ';
         }
+        if ($case_4) {
+            $message .= 'Only POST, GET, PUT OR DELETE methods can be defined as request. ';
+        }
+        if ($message !== '')
+            throw new \Exception($message);
+    }
+
+    private function validateRequestMethods()
+    {
+        foreach ($this->requestMethods as $requestMethod) {
+            if ($requestMethod !== 'POST' && $requestMethod !== 'GET' && $requestMethod !== 'PUT' && $requestMethod !== 'DELETE')
+                return false;
+        }
+        return true;
     }
 } 

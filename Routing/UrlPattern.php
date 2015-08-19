@@ -8,7 +8,8 @@
 namespace Routing;
 
 
-class UrlPattern {
+class UrlPattern
+{
     /**
      * Url pattern string
      * @var string
@@ -39,7 +40,8 @@ class UrlPattern {
      * Construction
      * @param $urlPattern
      */
-    function __construct($urlPattern) {
+    function __construct($urlPattern)
+    {
         $this->set($urlPattern);
     }
 
@@ -47,7 +49,8 @@ class UrlPattern {
      * Returns all arguments array
      * @return array
      */
-    public function getArgs() {
+    public function getArgs()
+    {
         return $this->args;
     }
 
@@ -55,7 +58,8 @@ class UrlPattern {
      * Returns absolute arguments array
      * @return array
      */
-    public function getAbsoluteArgs() {
+    public function getAbsoluteArgs()
+    {
         return $this->absoluteArgs;
     }
 
@@ -63,7 +67,8 @@ class UrlPattern {
      * Returns arguments array which might not set
      * @return array
      */
-    public function getArgsMightNotSet() {
+    public function getArgsMightNotSet()
+    {
         return $this->argsMightNotSet;
     }
 
@@ -71,7 +76,8 @@ class UrlPattern {
      * Returns absolutes array
      * @return mixed
      */
-    public function getAbsolutes() {
+    public function getAbsolutes()
+    {
         return $this->absolutes;
     }
 
@@ -79,7 +85,8 @@ class UrlPattern {
      * Returns count arguments
      * @return int
      */
-    public function getCountArgs() {
+    public function getCountArgs()
+    {
         return count($this->args);
     }
 
@@ -87,7 +94,8 @@ class UrlPattern {
      * Returns count absolute arguments
      * @return int
      */
-    public function getCountAbsoluteArgs() {
+    public function getCountAbsoluteArgs()
+    {
         return count($this->absoluteArgs);
     }
 
@@ -95,7 +103,8 @@ class UrlPattern {
      * Returns count of arguments might not set
      * @return int
      */
-    public function getCountArgsMightNotSet() {
+    public function getCountArgsMightNotSet()
+    {
         return count($this->argsMightNotSet);
     }
 
@@ -103,7 +112,8 @@ class UrlPattern {
      * Returns count of absolutes
      * @return int
      */
-    public function getCountAbsolutes() {
+    public function getCountAbsolutes()
+    {
         return count($this->absolutes);
     }
 
@@ -112,10 +122,12 @@ class UrlPattern {
      * @param $requestUrl
      * @return bool|int
      */
-    public function getMatchScoreUrl($requestUrl) {
+    public function getMatchScoreUrl($requestUrl)
+    {
         foreach ($this->getRegexPatternVariations() as $regexPattern) {
-            if (preg_match($regexPattern, $requestUrl))
-                return $this->getCountAbsolutes() * 0.8 + $this->getCountAbsoluteArgs() * 0.2;
+            if (preg_match($regexPattern, $requestUrl)) {
+                return $this->getCountAbsolutes() * 0.5 + $this->getCountAbsoluteArgs() * 0.25 + strlen(implode('', $this->getAbsolutes())) * 0.25;
+            }
         }
         return false;
     }
@@ -125,7 +137,8 @@ class UrlPattern {
      * @param $requestUrl
      * @return bool
      */
-    public function isMatches($requestUrl) {
+    public function isMatches($requestUrl)
+    {
         foreach ($this->getRegexPatternVariations() as $regexPattern) {
             if (preg_match($regexPattern, $requestUrl))
                 return true;
@@ -137,7 +150,8 @@ class UrlPattern {
      * Checks if url pattern has arguments
      * @return bool
      */
-    public function hasArgs() {
+    public function hasArgs()
+    {
         return isset($this->args);
     }
 
@@ -145,7 +159,8 @@ class UrlPattern {
      * Convert and get regex pattern variations
      * @return array
      */
-    public function getRegexPatternVariations() {
+    public function getRegexPatternVariations()
+    {
         $variations = array();
         $maxLimit = 0;
         if (preg_match_all($pattern = '@' . '/*{[^}]+\?}@', $this->urlPattern, $argsHasDefaultValueMatches)) {
@@ -153,9 +168,10 @@ class UrlPattern {
         }
         for ($limit = $maxLimit; $limit >= 0; $limit--) {
             /*
-             * exchange $limit args has default value to [willNotRemove] string for delete default args from right
+             * exchange $limit args has default value to willNotRemove string for delete default args from right
              */
-            $exchangedString = preg_replace('@([^}]+){[^}]+\?}@', '$1[willNotRemove]', $this->urlPattern, $limit);
+            $willNotRemove = 'will' . microtime() . 'not' . microtime() . 'remove';
+            $exchangedString = preg_replace('@([^}]+){[^}]+\?}@', '$1' . $willNotRemove, $this->urlPattern, $limit);
             /*
              * Remove args which might not set
              */
@@ -163,7 +179,7 @@ class UrlPattern {
             /*
              * Exchange args with regex
              */
-            $exchangedString = preg_replace('@\[willNotRemove\]@', '(.+)', $exchangedString);
+            $exchangedString = preg_replace('@' . $willNotRemove . '@', '(.+)', $exchangedString);
             $variations[] = '@^' . preg_replace('@{[^}]+}@', '(.+)', $exchangedString) . '@';
         }
         return $variations;
@@ -173,7 +189,8 @@ class UrlPattern {
      * Returns url pattern string
      * @return mixed
      */
-    public function getString() {
+    public function getString()
+    {
         return $this->urlPattern;
     }
 
@@ -181,7 +198,8 @@ class UrlPattern {
      * Set and parse new url pattern string
      * @param $urlPattern
      */
-    public function set($urlPattern) {
+    public function set($urlPattern)
+    {
         $this->urlPattern = $urlPattern;
         $this->parse($urlPattern);
     }
@@ -192,7 +210,8 @@ class UrlPattern {
      * @throws \Exception
      * @return mixed
      */
-    public function getReplacedStringWithArgs(array $args) {
+    public function getReplacedStringWithArgs(array $args)
+    {
         $replaced = $this->urlPattern;
         foreach ($args as $argKey => $argVal) {
             if (in_array($argKey, $this->getArgs())) {
@@ -207,7 +226,8 @@ class UrlPattern {
     /**
      * parse url pattern
      */
-    private function parse() {
+    private function parse()
+    {
         if (preg_match_all('@{(\w+)\?*}(?!\w+)@', $this->urlPattern, $matchesArgs)) {
             $this->args = next($matchesArgs);
         }
@@ -227,7 +247,8 @@ class UrlPattern {
      * @param $urlPattern
      * @return mixed
      */
-    private function removeUrlArgsMightNotSet($urlPattern) {
+    private function removeUrlArgsMightNotSet($urlPattern)
+    {
         return preg_replace('@(?:[^}\w]*){[^}]+\?}@', '', $urlPattern);
     }
 
@@ -236,7 +257,8 @@ class UrlPattern {
      * @param $urlPattern
      * @return mixed
      */
-    private function removeUrlArgs($urlPattern) {
+    private function removeUrlArgs($urlPattern)
+    {
         return preg_replace('@(?:[^}\w]*){[^}]+}@', '', $urlPattern);
     }
 
@@ -244,7 +266,8 @@ class UrlPattern {
      * __toString method
      * @return string
      */
-    function __toString() {
+    function __toString()
+    {
         return $this->getString();
     }
 }

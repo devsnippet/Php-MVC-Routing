@@ -12,11 +12,12 @@ use System\Helper\ClassHelper;
 use System\Helper\FileHelper;
 use System\Helper\PhpDocParser;
 
-class RoutingHelper {
+class RoutingHelper
+{
     /**
      * Controller class files directory
      */
-    const CONTROLLER_FILES_DIRECTORY = DIR_CONTROLLER; // controller class files directory
+    const CONTROLLER_FILES_DIRECTORY = DIR_CONTROLLER;
     /**
      * Contoller class name's suffix
      */
@@ -38,6 +39,10 @@ class RoutingHelper {
      */
     const MetaPhpDocUrlPrefix = '@UrlPrefix';
     /**
+     * PhpDoc request methods definiton key which is over action method
+     */
+    const MetaPhpDocRequestMethods = '@RequestMethods';
+    /**
      * Controller name
      * @var string
      */
@@ -57,15 +62,21 @@ class RoutingHelper {
      * @var UrlPattern
      */
     protected $urlPattern;
+    /**
+     * Valid request methods array
+     * @var array
+     */
+    protected $requestMethods = array();
 
     /**
      * Generate controller class ful name with namespace
      * @param $controller
      * @return string
      */
-    protected function controllerClassFullName($controller) {
+    protected function controllerClassFullName($controller)
+    {
         $controller = preg_replace('@(\w+)' . self::ControllerSuffix . '@', '$1', str_replace('/', '', $controller));
-        return 'Projects\\' . PROJECT_NAME . '\\App\\' . $controller . self::ControllerSuffix;
+        return PROJECT_NAME . '\\App\\' . $controller . self::ControllerSuffix;
     }
 
     /**
@@ -73,7 +84,8 @@ class RoutingHelper {
      * @param $action
      * @return string
      */
-    protected function actionMethodFullName($action) {
+    protected function actionMethodFullName($action)
+    {
         $action = preg_replace('@(\w+)' . self::ActionSuffix . '@', '$1', $action);
         return $action . self::ActionSuffix;
     }
@@ -83,7 +95,8 @@ class RoutingHelper {
      * @param $controllerName
      * @return bool
      */
-    protected function controllerExists($controllerName) {
+    protected function controllerExists($controllerName)
+    {
         return class_exists($this->controllerClassFullName($controllerName));
     }
 
@@ -93,8 +106,13 @@ class RoutingHelper {
      * @param $actionName
      * @return null|string
      */
-    protected function getUrlPatternOverActionMethod($controllerName, $actionName) {
-        return PhpDocParser::methodDoc($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName), self::MetaPhpUrlPattern);
+    protected function getUrlPatternDefinitionOverActionMethod($controllerName, $actionName)
+    {
+        $urlPattern = PhpDocParser::methodDoc($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName), self::MetaPhpUrlPattern);
+        if ($urlPattern !== null && !preg_match('@^\W+.*@', $urlPattern)) {
+            $urlPattern = '/' . $urlPattern;
+        }
+        return $urlPattern;
     }
 
     /**
@@ -103,8 +121,19 @@ class RoutingHelper {
      * @param $actionName
      * @return null|string
      */
-    protected function getRoutingSlugOverActionMethod($controllerName, $actionName) {
+    protected function getRoutingSlugDefinitionOverActionMethod($controllerName, $actionName)
+    {
         return PhpDocParser::methodDoc($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName), self::MetaPhpDocRoutingSlug);
+    }
+
+    /**
+     * Get Controller UrlPrefix PhpDoc Definition
+     * @param $controllerName
+     * @return null|string
+     */
+    protected function getUrlPrefixDefinitionOverController($controllerName)
+    {
+        return PhpDocParser::classDoc($this->controllerClassFullName($controllerName), self::MetaPhpDocUrlPrefix);
     }
 
     /**
@@ -112,7 +141,8 @@ class RoutingHelper {
      * @param $controllerName
      * @return array
      */
-    protected function controllerActionNames($controllerName) {
+    protected function controllerActionNames($controllerName)
+    {
         return array_map(function ($method) {
             return preg_replace('@(\w+)' . self::ActionSuffix . '@', '$1', $method, 1);
         }, array_filter(ClassHelper::getMethods($this->controllerClassFullName($controllerName)), function ($method) {
@@ -124,11 +154,13 @@ class RoutingHelper {
      * Returns controller, action and arguments array
      * @return array
      */
-    protected function getTarget() {
+    protected function getTarget()
+    {
         return [
             'controller' => $this->controllerClassFullName($this->controller),
             'action' => $this->actionMethodFullName($this->action),
-            'args' => $this->args
+            'args' => $this->args,
+            'request_methods' => $this->requestMethods
         ];
     }
 
@@ -138,7 +170,8 @@ class RoutingHelper {
      * @param $actionName
      * @return array
      */
-    protected function getActionArgNames($controllerName, $actionName) {
+    protected function getActionArgNames($controllerName, $actionName)
+    {
         return ClassHelper::getMethodArgNames($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName));
     }
 
@@ -148,7 +181,8 @@ class RoutingHelper {
      * @param $actionName
      * @return \ReflectionParameter[]
      */
-    protected function getActionArgs($controllerName, $actionName) {
+    protected function getActionArgs($controllerName, $actionName)
+    {
         return ClassHelper::getMethodArgs($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName));
     }
 
@@ -156,7 +190,8 @@ class RoutingHelper {
      * Get arguments accorting to url pattern from request url
      * @param $requestUrl
      */
-    protected function getArgsAccortingToUrlPattern($requestUrl) {
+    protected function getArgsAccortingToUrlPattern($requestUrl)
+    {
         if ($this->urlPattern->hasArgs()) {
             $unsortedArgValues = $this->parseArgs($requestUrl);
             $argNames = $this->getActionArgNames($this->controller, $this->action);
@@ -174,7 +209,8 @@ class RoutingHelper {
      * @param $requestUrl
      * @return mixed
      */
-    protected function parseArgs($requestUrl) {
+    protected function parseArgs($requestUrl)
+    {
         $args = array();
         foreach ($this->urlPattern->getRegexPatternVariations() as $regexPattern) {
             if (preg_match($regexPattern, $requestUrl, $matchesRequestUrl)) {
@@ -192,19 +228,11 @@ class RoutingHelper {
      * Get controller names cutted suffixes from class files
      * @return array
      */
-    protected function getControllerPathNamesFromClassFiles() {
+    protected function getControllerPathNamesFromClassFiles()
+    {
         return array_map(function ($v) {
             return preg_replace('@' . self::CONTROLLER_FILES_DIRECTORY . DIRECTORY_SEPARATOR . '([\w+/]+)' . self::ControllerSuffix . '\.php@', '$1', $v);
         }, FileHelper::directoryToArray(self::CONTROLLER_FILES_DIRECTORY));
-    }
-
-    /**
-     * Get Controller UrlPrefix PhpDoc Definition
-     * @param $controllerName
-     * @return null|string
-     */
-    protected function getPhpDocDefUrlPrefix($controllerName) {
-        return PhpDocParser::classDoc($this->controllerClassFullName($controllerName), self::MetaPhpDocUrlPrefix);
     }
 
     /**
@@ -214,11 +242,39 @@ class RoutingHelper {
      * @param $actionName
      * @return string
      */
-    protected function generateUrlPatternFromActionArgs($controllerName, $actionName) {
+    protected function generateUrlPatternFromActionArgs($controllerName, $actionName)
+    {
         return '/' . $actionName . '/' . implode('/', array_map(function ($arg) {
             $argPattern = '{' . $arg->getName();
             $argPattern .= $arg->isOptional() ? '?}' : '}';
             return $argPattern;
         }, $this->getActionArgs($controllerName, $actionName)));
+    }
+
+    /**
+     * Get defined request methods as array
+     * @return array|null
+     */
+    protected function getRequestMethods()
+    {
+        $requestMethods = $this->getRequestMethodDefinitionsOverActionMethod($this->controller, $this->action);
+        if ($requestMethods) {
+            $this->requestMethods = array_map(function ($v) {
+                return trim($v);
+            }, explode('|', trim($requestMethods, '|')));
+        } else {
+            $this->requestMethods = ['GET'];
+        }
+    }
+
+    /**
+     * Returns request method definitions over action method
+     * @param $controllerName
+     * @param $actionName
+     * @return null|string
+     */
+    protected function getRequestMethodDefinitionsOverActionMethod($controllerName, $actionName)
+    {
+        return PhpDocParser::methodDoc($this->controllerClassFullName($controllerName), $this->actionMethodFullName($actionName), self::MetaPhpDocRequestMethods);
     }
 } 

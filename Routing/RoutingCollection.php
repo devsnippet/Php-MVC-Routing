@@ -8,7 +8,8 @@
 namespace Routing;
 
 
-class RoutingCollection extends RoutingHelper {
+class RoutingCollection extends RoutingHelper
+{
     /**
      * Routing definitions file path
      */
@@ -25,7 +26,8 @@ class RoutingCollection extends RoutingHelper {
     /**
      * Construction
      */
-    function __construct() {
+    function __construct()
+    {
         $this->routings = include(self::ROUTING_FILE_PATH);
         self::$routingItems = $this->parseRoutingDefinitions($this->routings);
         $this->catchRoutingDefinitions();
@@ -36,7 +38,8 @@ class RoutingCollection extends RoutingHelper {
      * @param $slug
      * @return bool
      */
-    public function routingItemExists($slug) {
+    public function routingItemExists($slug)
+    {
         return self::$routingItems->offsetExists($slug);
     }
 
@@ -44,7 +47,8 @@ class RoutingCollection extends RoutingHelper {
      * Get all routing items
      * @return RoutingItem[]
      */
-    public function getRoutingItems() {
+    public function getRoutingItems()
+    {
         return self::$routingItems->getArrayCopy();
     }
 
@@ -54,7 +58,8 @@ class RoutingCollection extends RoutingHelper {
      * @param $actionName
      * @return null|RoutingItem
      */
-    public function find($controllerName, $actionName) {
+    public function find($controllerName, $actionName)
+    {
         foreach ($this->getRoutingItems() as $routingItem) {
             if (!$routingItem->hasParent() && $routingItem->getController() == $controllerName && $routingItem->getAction() == $actionName) {
                 return $routingItem;
@@ -68,7 +73,8 @@ class RoutingCollection extends RoutingHelper {
      * @param $parentSlug
      * @return RoutingItem[]
      */
-    public function getChilds($parentSlug) {
+    public function getChilds($parentSlug)
+    {
         $childRoutingItems = array();
         foreach ($this->getRoutingItems() as $routingItem) {
             if ($routingItem->getParentSlug() == $parentSlug) {
@@ -83,7 +89,8 @@ class RoutingCollection extends RoutingHelper {
      * @param $slug
      * @return null|RoutingItem
      */
-    public function getRoutingItem($slug) {
+    public function getRoutingItem($slug)
+    {
         if ($this->routingItemExists($slug))
             return self::$routingItems->offsetGet($slug);
         else
@@ -95,7 +102,8 @@ class RoutingCollection extends RoutingHelper {
      * @param $urlPrefix
      * @return null|RoutingItem
      */
-    public function getParentItemByUrlPrefix($urlPrefix) {
+    public function getParentItemByUrlPrefix($urlPrefix)
+    {
         /**
          * @var RoutingItem $routingItem
          */
@@ -112,7 +120,8 @@ class RoutingCollection extends RoutingHelper {
      * @param $controllerName
      * @return null|RoutingItem
      */
-    public function getParentItemByController($controllerName) {
+    public function getParentItemByController($controllerName)
+    {
         foreach ($this->getRoutingItems() as $routingItem) {
             if ($routingItem->isParent() && $routingItem->getController() == $controllerName) {
                 return $routingItem;
@@ -125,7 +134,8 @@ class RoutingCollection extends RoutingHelper {
      * Delete routing item from collection
      * @param $slug
      */
-    public function deleteRoutingItem($slug) {
+    public function deleteRoutingItem($slug)
+    {
         if ($this->routingItemExists($slug))
             self::$routingItems->offsetUnset($slug);
     }
@@ -135,7 +145,8 @@ class RoutingCollection extends RoutingHelper {
      * @param RoutingItem $routingItem
      * @throws \Exception
      */
-    public function addRoutingItem(RoutingItem $routingItem) {
+    public function addRoutingItem(RoutingItem $routingItem)
+    {
         if (!$this->routingItemExists($routingItem->getSlug())) {
             self::$routingItems->offsetSet($routingItem->getSlug(), $routingItem);
         } else {
@@ -148,7 +159,8 @@ class RoutingCollection extends RoutingHelper {
      * @param $routings
      * @return \ArrayObject
      */
-    private function parseRoutingDefinitions($routings) {
+    private function parseRoutingDefinitions($routings)
+    {
         $routingItems = new \ArrayObject();
         foreach ($routings as $slug => $properties) {
             $routingItem = new RoutingItem($slug, $properties);
@@ -163,18 +175,24 @@ class RoutingCollection extends RoutingHelper {
     /**
      * Catch routing definitions from controller files (slug definition is required for catching)
      */
-    private function catchRoutingDefinitions() {
+    private function catchRoutingDefinitions()
+    {
         foreach ($this->getControllerPathNamesFromClassFiles() as $controllerName) {
-            if (!$urlPrefix = $this->getPhpDocDefUrlPrefix($controllerName)) {
+            if (!$urlPrefix = $this->getUrlPrefixDefinitionOverController($controllerName)) {
                 $urlPrefix = '/' . $controllerName;
             }
             foreach ($this->controllerActionNames($controllerName) as $actionName) {
-                if ($routingSlug = $this->getRoutingSlugOverActionMethod($controllerName, $actionName)) {
-                    $urlPattern = $this->getUrlPatternOverActionMethod($controllerName, $actionName);
+                if ($routingSlug = $this->getRoutingSlugDefinitionOverActionMethod($controllerName, $actionName)) {
+                    $urlPattern = $this->getUrlPatternDefinitionOverActionMethod($controllerName, $actionName);
+                    if (!$urlPattern) {
+                        $urlPattern = $this->generateUrlPatternFromActionArgs($controllerName, $actionName);
+                    }
+                    $requestMethods = $this->getRequestMethodDefinitionsOverActionMethod($controllerName, $actionName);
                     $routingItem = new RoutingItem($routingSlug, [
                         RoutingItem::MetaRoutingAction => $actionName,
                         RoutingItem::MetaRoutingController => $controllerName,
-                        RoutingItem::MetaRoutingUrlPattern => $urlPrefix . $urlPattern
+                        RoutingItem::MetaRoutingUrlPattern => $urlPrefix . $urlPattern,
+                        RoutingItem::MetaRoutingRequestMethods => $requestMethods
                     ]);
                     $this->addRoutingItem($routingItem);
                 }
